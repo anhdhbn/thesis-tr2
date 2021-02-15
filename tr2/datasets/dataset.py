@@ -94,7 +94,7 @@ class TrkDataset(Dataset):
         try:
             template, _ = self.transform_norm(template, None)
         except Exception as e:
-            print(index, idx, template.shape, img_files[idx], anno[idx, :])
+            print(index, idx, template.size, img_files[idx], anno[idx, :])
             print(e)
             exit(0)
         
