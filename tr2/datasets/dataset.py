@@ -86,7 +86,10 @@ class TrkDataset(Dataset):
         search, target = self.transform_norm(search, target)
 
         # template
+        from copy import deepcopy
         src, bbox_src = Image.open(img_files[0]), self.cvt_x0y0wh_xyxy(anno[0, :])
+        c_src = src.size
+        c_box = deepcopy(bbox_src)
         src, target_src = self.transforms_template(src, {"boxes": bbox_src})
         template = src.crop(self.cvt_int(target_src["boxes"]))
         # template, _ = self.transform_norm(template, None)
@@ -94,7 +97,7 @@ class TrkDataset(Dataset):
         try:
             template, _ = self.transform_norm(template, None)
         except Exception as e:
-            print(index, idx, template.size, img_files[idx], anno[idx, :])
+            print(index, idx, c_src, c_box, src.size, target_src, template.size, img_files[idx])
             print(e)
             exit(0)
         
