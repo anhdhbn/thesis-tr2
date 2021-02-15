@@ -93,8 +93,9 @@ class TrkDataset(Dataset):
 
         try:
             template, _ = self.transform_norm(template, None)
-        except:
+        except Exception as e:
             print(index, idx, img_files[idx], anno[idx, :])
+            print(e)
             exit(0)
         
         label_cls = torch.tensor([1.0])
