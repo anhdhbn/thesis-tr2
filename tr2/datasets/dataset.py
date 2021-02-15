@@ -111,7 +111,7 @@ class TrkDataset(Dataset):
         return template, search, label_cls, label_bbox.squeeze(0)
     
     def __len__(self):
-        return 100 * len(self.dataset)
+        return 10 * len(self.dataset)
 
     def cvt_x0y0wh_xyxy(self, box):
         x0, y0 ,w, h = box
