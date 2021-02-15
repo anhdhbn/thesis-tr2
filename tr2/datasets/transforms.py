@@ -119,7 +119,7 @@ def resize(image, target, size, max_size=None):
         target["area"] = scaled_area
 
     h, w = size
-    target["size"] = torch.tensor([h, w])
+    target["size"] = torch.tensor([h, w], dtype=boxes.dtype)
 
     if "masks" in target:
         target['masks'] = interpolate(
@@ -249,7 +249,7 @@ class Normalize(object):
         if "boxes" in target:
             boxes = target["boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
-            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+            boxes = boxes / torch.tensor([w, h, w, h], dtype=boxes.dtype)
             target["boxes"] = boxes
         return image, target
 
