@@ -89,7 +89,13 @@ class TrkDataset(Dataset):
         src, bbox_src = Image.open(img_files[0]), self.cvt_x0y0wh_xyxy(anno[0, :])
         src, target_src = self.transforms_template(src, {"boxes": bbox_src})
         template = src.crop(self.cvt_int(target_src["boxes"]))
-        template, _ = self.transform_norm(template, None)
+        # template, _ = self.transform_norm(template, None)
+
+        try:
+            template, _ = self.transform_norm(template, None)
+        except:
+            print(index, idx, img_files[idx], anno[idx, :])
+            exit(0)
         
         label_cls = torch.tensor([1.0])
         label_bbox = target["boxes"].float()
