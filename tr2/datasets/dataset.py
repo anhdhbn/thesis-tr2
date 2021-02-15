@@ -74,9 +74,10 @@ class TrkDataset(Dataset):
 
     def get_one(self, index):
         index = self.indices[index % len(self.dataset)]
-        ignore = [4418, 4419]
-        if index in ignore:
-            index = index + 10
+        ignore = [1204,4224,4418,7787,7964,9171,9176]
+        while index in ignore:
+            index = np.random.choice(len(self.dataset))
+            index = self.indices[index % len(self.dataset)]
         img_files, anno, meta = self.dataset[index]
 
         # search
@@ -86,20 +87,20 @@ class TrkDataset(Dataset):
         search, target = self.transform_norm(search, target)
 
         # template
-        from copy import deepcopy
+        # from copy import deepcopy
         src, bbox_src = Image.open(img_files[0]), self.cvt_x0y0wh_xyxy(anno[0, :])
-        c_src = src.size
-        c_box = deepcopy(bbox_src)
+        # c_src = src.size
+        # c_box = deepcopy(bbox_src)
         src, target_src = self.transforms_template(src, {"boxes": bbox_src})
         template = src.crop(self.cvt_int(target_src["boxes"]))
-        # template, _ = self.transform_norm(template, None)
+        template, _ = self.transform_norm(template, None)
 
-        try:
-            template, _ = self.transform_norm(template, None)
-        except Exception as e:
-            print(index, idx, c_src, c_box, src.size, target_src, template.size, img_files[idx])
-            print(e)
-            exit(0)
+        # try:
+        #     template, _ = self.transform_norm(template, None)
+        # except Exception as e:
+        #     print(index, idx, c_src, c_box, src.size, target_src, template.size, img_files[idx])
+        #     print(e)
+        #     exit(0)
         
         label_cls = torch.tensor([1.0])
         label_bbox = target["boxes"].float()
