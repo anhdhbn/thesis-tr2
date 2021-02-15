@@ -37,7 +37,8 @@ class Tr2Criterion(nn.Module):
         loc_mask = loc[mask].view(-1, 4)
         label_loc_mask = label_loc[mask].view(-1, 4)
 
-        
+        if len(label_loc_mask) == 0:
+            return None
         # loc loss
         loc_loss = F.mse_loss(loc_mask, label_loc_mask)
 

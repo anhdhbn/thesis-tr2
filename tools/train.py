@@ -141,29 +141,30 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     for idx, (template, search, label_cls, label_bbox) in enumerate(data_loader):
         out = model(template.to(device), search.to(device))
         outputs = criterion(out,(label_cls.to(device), label_bbox.to(device)))
-        loss = outputs['total_loss']
-        if is_valid_number(loss.data.item()):
-            optimizer.zero_grad()
-            if amp:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                loss.backward()
-            if max_norm > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-            optimizer.step()
-
-            info = "train epoch: [{}] {}/{}\n ".format(
-                            epoch,
-                            idx, len(data_loader),)
-            for cc, (k, v) in enumerate(outputs.items()):
-                if cc % 2 == 0:
-                    info += ("\t{name}: {val:.6f}\t").format(name=k,
-                            val=outputs[k])
+        if outputs is not None:
+            loss = outputs['total_loss']
+            if is_valid_number(loss.data.item()):
+                optimizer.zero_grad()
+                if amp:
+                    with amp.scale_loss(loss, optimizer) as scaled_loss:
+                        scaled_loss.backward()
                 else:
-                    info += ("{name}: {val:.6f}\n").format(name=k,
-                            val=outputs[k])
-            logger.info(info)
+                    loss.backward()
+                if max_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+                optimizer.step()
+
+                info = "train epoch: [{}] {}/{}\n ".format(
+                                epoch,
+                                idx, len(data_loader),)
+                for cc, (k, v) in enumerate(outputs.items()):
+                    if cc % 2 == 0:
+                        info += ("\t{name}: {val:.6f}\t").format(name=k,
+                                val=outputs[k])
+                    else:
+                        info += ("{name}: {val:.6f}\n").format(name=k,
+                                val=outputs[k])
+                logger.info(info)
 
 def main():
     logger.info("init done")
