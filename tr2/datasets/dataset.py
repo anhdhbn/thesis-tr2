@@ -95,12 +95,13 @@ class TrkDataset(Dataset):
         label_cls = torch.tensor([1.0])
         label_bbox = target["boxes"].float()
 
-        assert (label_bbox[:, 2:] >= label_bbox[:, :2]).all()
-
         if meta['absence'][idx] == 1 or len(label_bbox) == 0:
             label_cls = torch.tensor([0.0])
             if len(label_bbox) == 0:
                 label_bbox = torch.zeros(1, 4)
+        if (label_bbox[:, 2:] < label_bbox[:, :2]).all():
+            print(label_bbox)
+            exit(0)
         return template, search, label_cls, label_bbox.squeeze(0)
     
     def __len__(self):
