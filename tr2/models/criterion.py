@@ -47,9 +47,12 @@ class Tr2Criterion(nn.Module):
         # giou_loss = giou_loss.sum() / (N + 1e-6)
 
         # iou loss
-        if (loc_mask[:, 2:] >= loc_mask[:, :2]).all():
-            print("error prediction")
-            return None
+        test_loc_mask = box_ops.box_cxcywh_to_xyxy(loc_mask)
+        if (test_loc_mask[:, 2:] >= test_loc_mask[:, :2]).all():
+            print(test_loc_mask)
+            print(loc_mask)
+            print(loc)
+            exit(0)
         iou, _ = box_ops.box_iou(
             box_ops.box_cxcywh_to_xyxy(loc_mask), 
             box_ops.box_cxcywh_to_xyxy(label_loc_mask))
