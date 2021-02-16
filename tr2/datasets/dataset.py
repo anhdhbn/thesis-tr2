@@ -14,7 +14,7 @@ from tr2.datasets import transforms as T
 import torch
 import random
 import os
-import copy 
+from tr2.utils import box_ops
 
 logger = logging.getLogger("global")
 
@@ -87,23 +87,16 @@ class TrkDataset(Dataset):
         search, target = self.transform_norm(search, target)
 
         # template
-        # from copy import deepcopy
         src, bbox_src = Image.open(img_files[0]), self.cvt_x0y0wh_xyxy(anno[0, :])
-        # c_src = src.size
-        # c_box = deepcopy(bbox_src)
         src, target_src = self.transforms_template(src, {"boxes": bbox_src})
         template = src.crop(self.cvt_int(target_src["boxes"]))
         template, _ = self.transform_norm(template, None)
-
-        # try:
-        #     template, _ = self.transform_norm(template, None)
-        # except Exception as e:
-        #     print(index, idx, c_src, c_box, src.size, target_src, template.size, img_files[idx])
-        #     print(e)
-        #     exit(0)
         
         label_cls = torch.tensor([1.0])
         label_bbox = target["boxes"].float()
+
+        assert (label_bbox[:, 2:] >= label_bbox[:, :2]).all()
+
         if meta['absence'][idx] == 1 or len(label_bbox) == 0:
             label_cls = torch.tensor([0.0])
             if len(label_bbox) == 0:
@@ -113,7 +106,7 @@ class TrkDataset(Dataset):
     def __len__(self):
         return 10 * len(self.dataset)
 
-    def cvt_x0y0wh_xyxy(self, box):
+    def cvt_x0y0wh_xyxy(self, box, wh=False):
         x0, y0 ,w, h = box
         return torch.tensor([x0, y0, x0+w, y0+h]).unsqueeze(0)
 
