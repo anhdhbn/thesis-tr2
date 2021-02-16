@@ -99,8 +99,9 @@ class TrkDataset(Dataset):
             label_cls = torch.tensor([0.0])
             if len(label_bbox) == 0:
                 label_bbox = torch.zeros(1, 4)
-        if (label_bbox[:, 2:] < label_bbox[:, :2]).all():
-            print(label_bbox)
+        xyxy = box_ops.box_cxcywh_to_xyxy(label_bbox)
+        if (xyxy[:, 2:] < xyxy[:, :2]).all():
+            print(xyxy)
             exit(0)
         return template, search, label_cls, label_bbox.squeeze(0)
     
