@@ -30,6 +30,8 @@ class Tr2Criterion(nn.Module):
 
         # class loss
         cls_loss = self.tr_cls_loss(cls, label_cls)
+        if cls_loss > 1:
+            print(cls, label_cls)
 
         # ignore negative labels
         mask = label_cls != torch.tensor([0], dtype=label_cls.dtype, device=label_cls.device)
