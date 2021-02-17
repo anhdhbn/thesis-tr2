@@ -18,7 +18,7 @@ workflows:
           modelType: Tensorflow
           name: gradientci-sample
           clusterId: clbdo1h0q
-        checks: #[optional]
+        # checks: #[optional]
           # tensorflow:loss:
           #   target: "0.0..0.5"
           #   aggregate: "mean"
