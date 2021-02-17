@@ -101,6 +101,11 @@ class TrkDataset(Dataset):
                 label_bbox = torch.zeros(1, 4)
         xyxy = box_ops.box_cxcywh_to_xyxy(label_bbox)
         if (xyxy[:, 2:] < xyxy[:, :2]).all():
+            print(meta)
+            print(idx)
+            print(img_files[idx])
+            print(anno[idx, :])
+            print(label_bbox)
             print(xyxy)
             exit(0)
         return template, search, label_cls, label_bbox.squeeze(0)
