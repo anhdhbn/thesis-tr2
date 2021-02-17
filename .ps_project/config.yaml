@@ -3,21 +3,28 @@ workflows:
   experiment-workflow:
     steps:
       -
-        name: "thesis-experiment"
+        name: "Apex installation"
         command: experiment.run_single_node
         params:
           command: nvidia-smi
           container: paperspace/dl-containers:pytorch-py36-cu100-jupyter
-          experimentEnv:
-            EPOCHS_EVAL: 5
-            EVAL_SECS: 10
-            MAX_STEPS: 1000
-            TRAIN_EPOCHS: 10
-          machineType: p2.xlarge
-          modelPath: /artifacts
-          modelType: Tensorflow
-          name: gradientci-sample
-          clusterId: clbdo1h0q
+          machineType: Free-P5000
+      # -  
+      #   name: "thesis-experiment"
+      #   command: experiment.run_single_node
+      #   params:
+      #     command: nvidia-smi
+      #     container: paperspace/dl-containers:pytorch-py36-cu100-jupyter
+      #     experimentEnv:
+      #       EPOCHS_EVAL: 5
+      #       EVAL_SECS: 10
+      #       MAX_STEPS: 1000
+      #       TRAIN_EPOCHS: 10
+      #     machineType: p2.xlarge
+      #     modelPath: /artifacts
+      #     modelType: Tensorflow
+      #     name: gradientci-sample
+      #     clusterId: clbdo1h0q
         # checks: #[optional]
           # tensorflow:loss:
           #   target: "0.0..0.5"
