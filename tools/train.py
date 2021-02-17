@@ -243,6 +243,7 @@ def main():
                 'amp': amp.state_dict() if amp else None
             },
             cfg.TRAIN.SNAPSHOT_DIR+'/checkpoint_e%d.pth' % (epoch))
+        dataset_train.dataset.shuffle()
 
 if __name__ == '__main__':
     seed_torch(args.seed)
