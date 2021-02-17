@@ -7,7 +7,7 @@ workflows:
         command: experiment.run_single_node
         params:
           command: nvidia-smi
-          container: paperspace/dl-containers:pytorch-py36-cu100-jupyter
+          container: tensorflow/tensorflow:1.13.1-gpu-py3
           machineType: Free-P5000
       # -  
       #   name: "thesis-experiment"
@@ -31,10 +31,10 @@ workflows:
           #   aggregate: "mean"
           # defaults: #[optional]
           #   precision: 3
-      triggers:
-        branches:
-          ignore: irrelevant-branch
-        tags:
-          only:
-            - v.*
-            - latest
+      # triggers:
+      #   branches:
+      #     ignore: irrelevant-branch
+      #   tags:
+      #     only:
+      #       - v.*
+      #       - latest
