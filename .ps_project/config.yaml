@@ -8,7 +8,7 @@ workflows:
         params:
           command: nvidia-smi
           container: tensorflow/tensorflow:1.13.1-gpu-py3
-          machineType: Free-P5000
+          machineType: M4000
       # -  
       #   name: "thesis-experiment"
       #   command: experiment.run_single_node
