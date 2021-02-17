@@ -42,7 +42,7 @@ class Tr2Criterion(nn.Module):
         # nan
         if(torch.isnan(loc_mask).any()):
             print("Error: nan tensor")
-        label_loc_mask = label_loc_mask[~torch.isnan(label_loc_mask)].view(-1, 4)
+        label_loc_mask = label_loc_mask[~torch.isnan(loc_mask)].view(-1, 4)
         loc_mask = loc_mask[~torch.isnan(loc_mask)].view(-1, 4)
         if len(label_loc_mask) <= 1:
             return None
