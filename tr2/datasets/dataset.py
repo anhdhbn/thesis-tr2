@@ -102,6 +102,8 @@ class TrkDataset(Dataset):
         xyxy = box_ops.box_cxcywh_to_xyxy(label_bbox)
         if (xyxy[:, 2:] < xyxy[:, :2]).all():
             print(meta)
+            print(meta['absence'][idx])
+            print(label_cls)
             print(idx)
             print(img_files[idx])
             print(anno[idx, :])
@@ -113,7 +115,7 @@ class TrkDataset(Dataset):
     def __len__(self):
         return 10 * len(self.dataset)
 
-    def cvt_x0y0wh_xyxy(self, box, wh=False):
+    def cvt_x0y0wh_xyxy(self, box):
         x0, y0 ,w, h = box
         return torch.tensor([x0, y0, x0+w, y0+h]).unsqueeze(0)
 
