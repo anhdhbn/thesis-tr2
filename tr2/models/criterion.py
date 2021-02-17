@@ -62,6 +62,8 @@ class Tr2Criterion(nn.Module):
                 box_ops.box_cxcywh_to_xyxy(label_loc_mask)))
             giou_loss = torch.mean(giou_loss)
         except:
+            print(loc_mask)
+            print(loc)
             print(label_loc_mask)
             print(label_loc)
             exit(0)
