@@ -63,7 +63,8 @@ def build_data_loader(dataset, subset):
                               num_workers=cfg.TRAIN.NUM_WORKERS,
                               pin_memory=True,
                               sampler=train_sampler,
-                              collate_fn=collate_fn)
+                              collate_fn=collate_fn,
+                              drop_last=True)
     return data_loader
 
 

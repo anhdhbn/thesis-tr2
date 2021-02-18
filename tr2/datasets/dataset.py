@@ -66,6 +66,7 @@ class TrkDataset(Dataset):
 
     def __getitem__(self, index):
         if isinstance(index, int):
+            if index is None: index = np.random.choice(len(self.dataset))
             return self.get_one(index)
         else:
             out = [ self.get_one(i) for i in index]
