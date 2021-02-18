@@ -62,11 +62,10 @@ class TrkDataset(Dataset):
         self.indices = np.random.permutation(len(self.dataset))
     
     def shuffle(self):
-        self.indices = np.random.shuffle(self.indices)
+        np.random.shuffle(self.indices)
 
     def __getitem__(self, index):
         if isinstance(index, int):
-            if index is None: index = np.random.choice(len(self.dataset))
             return self.get_one(index)
         else:
             out = [ self.get_one(i) for i in index]
@@ -103,17 +102,6 @@ class TrkDataset(Dataset):
             label_cls = torch.tensor([0.0])
             if len(label_bbox) == 0:
                 label_bbox = torch.zeros(1, 4)
-        xyxy = box_ops.box_cxcywh_to_xyxy(label_bbox)
-        if (xyxy[:, 2:] < xyxy[:, :2]).all() and label_cls[0] != 0:
-            print(meta)
-            print(meta['absence'][idx])
-            print(label_cls)
-            print(idx)
-            print(img_files[idx])
-            print(anno[idx, :])
-            print(label_bbox)
-            print(xyxy)
-            exit(0)
         return template, search, label_cls, label_bbox.squeeze(0)
     
     def __len__(self):
