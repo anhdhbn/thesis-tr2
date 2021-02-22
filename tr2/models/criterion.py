@@ -46,6 +46,7 @@ class Tr2Criterion(nn.Module):
             print(label_loc)
             print(cls)
             print(label_cls)
+            exit(0)
 
         label_loc_mask = label_loc_mask[~torch.isnan(loc_mask)].view(-1, 4)
         loc_mask = loc_mask[~torch.isnan(loc_mask)].view(-1, 4)
