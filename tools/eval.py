@@ -181,18 +181,18 @@ def main():
         img_paths, anno = validator[video_idx]
         
         template, template_norm, _ = validator.transforms(img_paths[0], anno[0, :], is_template=True)
-        model.init(nested_tensor_from_tensor_list([template_norm]))
+        model.init(nested_tensor_from_tensor_list([template_norm.to(device)]))
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID') 
         video = cv2.VideoWriter(f"{folder}/{validator.dataset.seq_names[video_idx]}.avi", fourcc, 15, template.size)
 
         for idx in tqdm(range(1, len(img_paths))):
             search, search_norm, target = validator.transforms(img_paths[idx], anno[idx, :])
-            cls, boxes = model.track(nested_tensor_from_tensor_list([search_norm]))
+            cls, boxes = model.track(nested_tensor_from_tensor_list([search_norm.to(device)]))
             boxes = box_ops.box_cxcywh_to_xyxy(boxes)
             img_h, img_w = target["orig_size"]
             scale_fct = torch.stack([img_w, img_h, img_w, img_h]).unsqueeze(0)
-            boxes = boxes * scale_fct
+            boxes = boxes * scale_fct.to(device)
             x1, y1, x2, y2 = validator.cvt_int(boxes)
             draw = ImageDraw.Draw(search)
             draw.rectangle((x1, y1, x2, y2), fill=None, outline=(255, 0, 0), width=2)
