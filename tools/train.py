@@ -90,7 +90,7 @@ def check_keys(model, pretrained_state_dict):
         'load NONE from pretrained checkpoint'
     return True
 
-def restore_from(model, optimizer, ckpt_path, apex=None):
+def restore_from(model, optimizer, ckpt_path, apex):
     ckpt = torch.load(ckpt_path,map_location='cpu')
     epoch = ckpt['epoch']
 
@@ -100,13 +100,14 @@ def restore_from(model, optimizer, ckpt_path, apex=None):
     check_keys(optimizer, ckpt['optimizer'])
     optimizer.load_state_dict(ckpt['optimizer'])
 
-    if apex is not None and ckpt['amp'] is not None:
+    if apex is not None:
         model, optimizer = apex.initialize(
             model, optimizer, opt_level="O1", 
             keep_batchnorm_fp32=None, loss_scale="dynamic"
         )
-        check_keys(apex, ckpt['amp'])
-        apex.load_state_dict(ckpt['amp'])
+        if ckpt['amp'] is not None:
+            check_keys(apex, ckpt['amp'])
+            apex.load_state_dict(ckpt['amp'])
     return model, optimizer, epoch, apex
 
 def load_pretrain(model, pretrained_path):
@@ -214,8 +215,8 @@ def main():
         logger.info("resume from {}".format(cfg.TRAIN.RESUME))
         assert os.path.isfile(cfg.TRAIN.RESUME), \
             '{} is not a valid file.'.format(cfg.TRAIN.RESUME)
-        model, optimizer, cfg.TRAIN.START_EPOCH, amp = \
-            restore_from(model, optimizer, cfg.TRAIN.RESUME)
+        model, optimizer, cfg.TRAIN.START_EPOCH, apex = \
+            restore_from(model, optimizer, cfg.TRAIN.RESUME, amp)
     
     else:
         # load pretrain
