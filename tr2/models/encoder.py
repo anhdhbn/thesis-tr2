@@ -46,7 +46,7 @@ class TransformerEncoderLayer(nn.Module):
                 pos: Optional[Tensor] = None):
         q = k = with_pos_embed(src, pos)
 
-        attn_out, attn_output_weights = self.self_attention(query=q, key=k, value=src, key_padding_mask=src_key_padding_mask)
+        attn_out, attn_output_weights = self.self_attention(query=q, key=k, value=src, key_padding_mask=src_key_padding_mask, attn_mask=src_mask)
         x = self.norm_sa(self.dropout_sa(attn_out) + src)
 
         # Add skip connection, run through normalization and finally dropout

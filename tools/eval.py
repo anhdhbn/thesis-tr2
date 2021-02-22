@@ -7,7 +7,7 @@ import argparse
 import logging
 import random
 import os
-from re import template
+from re import search, template
 import numpy as np
 import json
 
@@ -17,12 +17,17 @@ from torch.utils.data.distributed import DistributedSampler
 
 from tr2.core.config import cfg
 from tr2.utils.distributed import get_world_size
-from tr2.datasets.dataset import TrkDataset
+from tr2.datasets.dataset import Got10kVal
 from tr2.utils.log_helper import init_log, add_file_handler
 from tr2.models.tr2 import build_tr2
 from tr2.utils.misc import collate_fn
+from tr2.utils import box_ops
 from typing import Iterable
 import math
+from PIL import Image, ImageDraw
+import cv2
+from tqdm import tqdm
+from tr2.utils.misc import nested_tensor_from_tensor_list
 
 try:
     from apex import amp
@@ -48,25 +53,6 @@ def seed_torch(seed=0):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-
-def build_data_loader(dataset, subset):
-    logger.info("build train dataset")
-    # train_dataset
-    train_dataset = TrkDataset(dataset, subset)
-    logger.info("build dataset done")
-
-    train_sampler = None
-    # if get_world_size() > 1:
-    #     train_sampler = DistributedSampler(train_dataset)
-    data_loader = DataLoader(train_dataset,
-                              batch_size=cfg.TRAIN.BATCH_SIZE,
-                              num_workers=cfg.TRAIN.NUM_WORKERS,
-                              pin_memory=True,
-                              sampler=train_sampler,
-                              collate_fn=collate_fn,
-                              drop_last=True)
-    return data_loader
-
 
 def check_keys(model, pretrained_state_dict):
     ckpt_keys = set(pretrained_state_dict.keys())
@@ -133,40 +119,6 @@ def load_pretrain(model, pretrained_path):
     return model
 
 
-def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
-                    data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, max_norm=0.1):
-    model.train()
-    criterion.train()
-    def is_valid_number(x):
-        return not(math.isnan(x) or math.isinf(x) or x > 1e4)
-    for idx, (template, search, label_cls, label_bbox) in enumerate(data_loader):
-        out = model(template.to(device), search.to(device))
-        outputs = criterion(out,(label_cls.to(device), label_bbox.to(device)))
-        if outputs is not None:
-            loss = outputs['total_loss']
-            if is_valid_number(loss.data.item()):
-                optimizer.zero_grad()
-                if amp:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                else:
-                    loss.backward()
-                if max_norm > 0:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-                optimizer.step()
-
-                info = "train epoch: [{}] {}/{}\n ".format(
-                                epoch,
-                                idx, len(data_loader),)
-                for cc, (k, v) in enumerate(outputs.items()):
-                    if cc % 2 == 0:
-                        info += ("\t{name}: {val:.6f}\t").format(name=k,
-                                val=outputs[k])
-                    else:
-                        info += ("{name}: {val:.6f}\n").format(name=k,
-                                val=outputs[k])
-                logger.info(info)
 
 def main():
     logger.info("init done")
@@ -176,7 +128,7 @@ def main():
     global amp
     if not cfg.APEX:
         amp = None
-
+    
     if not os.path.exists(cfg.TRAIN.LOG_DIR):
             os.makedirs(cfg.TRAIN.LOG_DIR)
     init_log('global', logging.INFO)
@@ -192,9 +144,6 @@ def main():
     criterion.to(device)
     model.to(device)
 
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"number of params: {n_parameters}")
-
     param_dicts = [
         {"params": [p for n, p in model.named_parameters() if "backbone" not in n and p.requires_grad]},
         {
@@ -205,10 +154,6 @@ def main():
 
     optimizer = torch.optim.AdamW(param_dicts, lr=cfg.TRAIN.LR,
                                   weight_decay=cfg.TRAIN.WEIGHT_DECAY)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 40)
-
-    dataset_train = build_data_loader("got10k", "train")
-
 
     if cfg.TRAIN.RESUME:
         logger.info("resume from {}".format(cfg.TRAIN.RESUME))
@@ -227,24 +172,37 @@ def main():
                 model, optimizer, opt_level="O1", 
                 keep_batchnorm_fp32=None, loss_scale="dynamic"
             )
+    model.eval()
 
-    logger.info(f"apex: {amp is not None}")
-    logger.info(lr_scheduler)
-    logger.info("model prepare done")
-    if not os.path.exists(cfg.TRAIN.SNAPSHOT_DIR):
-        os.makedirs(cfg.TRAIN.SNAPSHOT_DIR)
-    for epoch in range(cfg.TRAIN.START_EPOCH, cfg.TRAIN.EPOCH):
-        train_one_epoch(model, criterion, dataset_train, optimizer, device, epoch, max_norm=0.1)
-        lr_scheduler.step()
-        torch.save(
-            {
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'amp': amp.state_dict() if amp else None
-            },
-            cfg.TRAIN.SNAPSHOT_DIR+'/checkpoint_e%d.pth' % (epoch))
-        dataset_train.dataset.shuffle()
+    validator = Got10kVal()
+    
+    folder = "result"
+    for video_idx in tqdm(range(len(validator))):
+        img_paths, anno = validator[video_idx]
+        
+        template, template_norm, _ = validator.transforms(img_paths[0], anno[0, :], is_template=True)
+        model.init(nested_tensor_from_tensor_list([template_norm]))
+
+        fourcc = cv2.VideoWriter_fourcc(*'XVID') 
+        video = cv2.VideoWriter(f"{folder}/{validator.dataset.seq_names[video_idx]}.avi", fourcc, 15, template.size)
+
+        for idx in tqdm(range(1, len(img_paths))):
+            search, search_norm, target = validator.transforms(img_paths[idx], anno[idx, :])
+            cls, boxes = model.track(nested_tensor_from_tensor_list([search_norm]))
+            boxes = box_ops.box_cxcywh_to_xyxy(boxes)
+            img_h, img_w = target["orig_size"]
+            scale_fct = torch.stack([img_w, img_h, img_w, img_h]).unsqueeze(0)
+            boxes = boxes * scale_fct
+            x1, y1, x2, y2 = validator.cvt_int(boxes)
+            draw = ImageDraw.Draw(search)
+            draw.rectangle((x1, y1, x2, y2), fill=None, outline=(255, 0, 0), width=2)
+            del draw
+            search_np = search.copy()
+            video.write(cv2.cvtColor(np.array(search_np), cv2.COLOR_RGB2BGR))
+        
+        video.release()
+        del video
+
 
 if __name__ == '__main__':
     seed_torch(args.seed)

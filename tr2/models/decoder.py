@@ -82,7 +82,7 @@ class TransformerDecoderLayer(nn.Module):
         q2 = with_pos_embed(memory, pos_template)
         template_att2, _ = self.attn(query=q2,
                                    key=k,
-                                   value=search, attn_mask=tgt_mask,
+                                   value=search, attn_mask=memory_mask,
                                    key_padding_mask=tgt_key_padding_mask)
         
         # add norm + dropout

@@ -45,10 +45,10 @@ def make_got10k_transforms(image_set):
             )
         ]), template_transforms, normalize
 
-    if image_set == 'val':
+    if image_set == 'val' or image_set == 'test':
         return T.Compose([
             T.RandomResize([800], max_size=1333)
-        ]), template_transforms, normalize
+        ]), normalize
 
     raise ValueError(f'unknown {image_set}')
 
@@ -114,3 +114,34 @@ class TrkDataset(Dataset):
     def cvt_int(self, box):
         x1, y1, x2, y2 = box.squeeze(0)
         return int(x1), int(y1), int(x2), int(y2)
+class Got10kVal:
+    def __init__(self, subset="val") -> None:
+        cur_path = os.path.dirname(os.path.realpath(__file__))
+        self.root = os.path.join(cur_path, '../../', "training_dataset/got10k")
+        self.dataset = GOT10k(self.root , subset=subset, return_meta=False)
+        self.transforms_img, self.transform_norm = make_got10k_transforms(subset)
+        self.video_idx = 0
+    
+    def __getitem__(self, index):
+        return self.dataset[index]
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def transforms(self, img_path, bbox, is_template=False):
+        bbox = self.cvt_x0y0wh_xyxy(bbox)
+        image_src = Image.open(img_path)
+        w, h = image_src.size
+        image, target = self.transforms_img(image_src, {"boxes": bbox, "orig_size": torch.tensor([h, w], dtype=bbox.dtype)})
+        if is_template:
+            image = image.crop(self.cvt_int(target["boxes"]))
+        image_norm, target_norm = self.transform_norm(image, target)
+        return image_src, image_norm, target_norm
+
+    def cvt_int(self, box):
+        x1, y1, x2, y2 = box.squeeze(0)
+        return int(x1), int(y1), int(x2), int(y2)
+
+    def cvt_x0y0wh_xyxy(self, box):
+        x0, y0 ,w, h = box
+        return torch.tensor([x0, y0, x0+w, y0+h]).unsqueeze(0)

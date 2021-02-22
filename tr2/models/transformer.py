@@ -73,10 +73,29 @@ class Transformer(nn.Module):
         pos_template = pos_template.flatten(2).permute(2, 0, 1) # HWxNxC
         pos_search = pos_search.flatten(2).permute(2, 0, 1) # HWxNxC
 
-        memory = self.encoder(template, src_key_padding_mask=mask_template, pos=pos_template, src_mask=mask_template)
+        memory = self.encoder(template, src_key_padding_mask=mask_template, pos=pos_template)
 
-        out = self.decoder(search, memory, memory_key_padding_mask=mask_template, pos_template=pos_template, pos_search=pos_search) # num_decoder_layer x WH x N x C 
-        out2 = self.decoder2(search, memory, memory_key_padding_mask=mask_template, pos_template=pos_template, pos_search=pos_search) # num_decoder_layer x WH x N x C 
+        out = self.decoder(search, memory, memory_key_padding_mask=mask_template, pos_template=pos_template, pos_search=pos_search, tgt_key_padding_mask=mask_search) # num_decoder_layer x WH x N x C 
+        out2 = self.decoder2(search, memory, memory_key_padding_mask=mask_template, pos_template=pos_template, pos_search=pos_search, tgt_key_padding_mask=mask_search) # num_decoder_layer x WH x N x C 
+        return out.transpose(1, 2), out2.transpose(1, 2)
+    
+    def init(self, template, mask_template, pos_template):
+        template = template.flatten(2).permute(2, 0, 1) # HWxNxC
+        mask_template = mask_template.flatten(1) # NxHW
+        pos_template = pos_template.flatten(2).permute(2, 0, 1) # HWxNxC
+        return self.encoder(template, src_key_padding_mask=mask_template, pos=pos_template)
+
+    def track(self, memory, mask_template, pos_template, search, mask_search, pos_search):
+        search = search.flatten(2).permute(2, 0, 1) # HWxNxC
+
+        mask_template = mask_template.flatten(1) # NxHW
+        mask_search = mask_search.flatten(1) # NxHW
+
+        pos_template = pos_template.flatten(2).permute(2, 0, 1) # HWxNxC
+        pos_search = pos_search.flatten(2).permute(2, 0, 1) # HWxNxC
+
+        out = self.decoder(search, memory, memory_key_padding_mask=mask_template, pos_template=pos_template, pos_search=pos_search, tgt_key_padding_mask=mask_search)
+        out2 = self.decoder2(search, memory, memory_key_padding_mask=mask_template, pos_template=pos_template, pos_search=pos_search, tgt_key_padding_mask=mask_search)
         return out.transpose(1, 2), out2.transpose(1, 2)
 
 def build_transformer(

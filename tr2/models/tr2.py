@@ -62,6 +62,32 @@ class Tr2(nn.Module):
         
         return outputs_class, outputs_coord
 
+    def init(self, template):
+        template, pos_template = self.backbone(template)
+        template, self.mask_template = template[-1].decompose()
+        self.template = self.reshape(template)
+        self.pos_template = pos_template[-1]
+
+        self.memory = self.transformer.init(self.template, self.mask_template, self.pos_template)
+
+
+    def track(self, search):
+        search, pos_search = self.backbone(search)
+        search, mask_search = search[-1].decompose()
+        search = self.reshape(search)
+        pos_search = pos_search[-1]
+
+        out, out2 = self.transformer.track(self.memory, self.mask_template, self.pos_template,search, mask_search, pos_search)
+        # [6, 32, 16, 512]
+
+        out = self.adap(out[-1].transpose(1,2)).flatten(1)
+        out2 = self.adap(out2[-1].transpose(1,2)).flatten(1)
+
+        outputs_class = self.class_embed(out)
+        outputs_coord = self.bbox_embed(out2).sigmoid()
+        
+        return outputs_class, outputs_coord
+
 def build_tr2():
     hidden_dims=cfg.TRANSFORMER.KWARGS['hidden_dims']
     backbone = build_backbone(hidden_dims)
