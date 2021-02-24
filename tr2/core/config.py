@@ -70,12 +70,6 @@ __C.BACKBONE.TYPE = 'resnet50'
 # Train layers
 __C.BACKBONE.TRAIN_LAYERS = ['layer2', 'layer3', 'layer4']
 
-# Layer LR
-__C.BACKBONE.LAYERS_LR = 0.1
-
-# Switch to train layer
-__C.BACKBONE.TRAIN_EPOCH = 10
-
 __C.BACKBONE.LR = 1e-5
 
 

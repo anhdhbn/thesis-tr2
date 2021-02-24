@@ -1,0 +1,37 @@
+CUDA: true
+APEX: true
+
+BACKBONE: 
+  TYPE: 'resnet50'
+
+TRAIN:
+  EPOCH: 50
+  START_EPOCH: 0
+  BATCH_SIZE: 5
+  WEIGHT: 
+    cls_weight: 1
+    loc_weight: 1.2
+    giou_weight: 1.2
+  RESUME: ''
+
+BACKBONE:
+  TRAIN_LAYERS: ['layer2', 'layer3', 'layer4']
+  LR: 0.00005
+
+TRANSFORMER:
+  KWARGS:
+    hidden_dims: 256
+    num_heads: 4
+    num_encoder_layer: 3
+    num_decoder_layer: 3
+    dim_feed_forward: 1024
+    dropout: 0.1
+
+DATASET:
+  NAMES: 
+  - 'GOT10K'
+
+  GOT10K:
+    ROOT: 'training_dataset/got10k'
+    FRAMES_PER_VIDEO: 150
+    VIS_PATH: 'visualization/e24'
