@@ -75,12 +75,10 @@ class GOT10kWrapper(Dataset):
 
     def __getitem__(self, index):
         index = self.indices[index % len(self.dataset)]
-        img_files, anno, meta = self.dataset[index]
-
         while index in self.ignore:	
             index = np.random.choice(len(self.dataset))	
             index = self.indices[index % len(self.dataset)]
-
+        img_files, anno, meta = self.dataset[index]
         # search
         idx = random.randrange(1, len(img_files))
         search, bbox = Image.open(img_files[idx]), cvt_x0y0wh_xyxy(anno[idx, :])
