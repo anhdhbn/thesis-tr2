@@ -197,8 +197,8 @@ def main():
             scale_fct = torch.stack([img_w, img_h, img_w, img_h]).unsqueeze(0)
             boxes = boxes * scale_fct.to(device)
             draw = ImageDraw.Draw(search)
-            draw.rectangle(wrapper.cvt_int(boxes), fill=None, outline=(255, 0, 0), width=4)
-            draw.rectangle(wrapper.cvt_int(src_box), fill=None, outline=(0, 255, 0), width=4)
+            draw.rectangle(wrapper.cvt_int(boxes), fill=None, outline=(255, 0, 0), width=5)
+            draw.rectangle(wrapper.cvt_int(src_box), fill=None, outline=(0, 255, 0), width=5)
             del draw
             search_np = search.copy()
             video.write(cv2.cvtColor(np.array(search_np), cv2.COLOR_RGB2BGR))
