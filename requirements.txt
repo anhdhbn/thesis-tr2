@@ -3,3 +3,4 @@ yacs
 tqdm
 got10k
 numpy
+opencv-python
