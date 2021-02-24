@@ -21,6 +21,7 @@ from tr2.datasets.dataset import TrkDataset
 from tr2.utils.log_helper import init_log, add_file_handler
 from tr2.models.tr2 import build_tr2
 from tr2.utils.misc import collate_fn
+from tr2.utils.model_loader import load_pretrain, restore_from
 from typing import Iterable
 import math
 
@@ -34,7 +35,7 @@ logger = logging.getLogger('global')
 parser = argparse.ArgumentParser(description='tracking transformer')
 parser.add_argument('--cfg', type=str, default='config.yaml',
                     help='configuration of tracking')
-parser.add_argument('--seed', type=int, default=1234,
+parser.add_argument('--seed', type=int, default=1699,
                     help='random seed')
 parser.add_argument('--local_rank', type=int, default=0,
                     help='compulsory for pytorch launcer')
@@ -49,89 +50,23 @@ def seed_torch(seed=0):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-def build_data_loader(dataset, subset):
+def build_train_loader():
     logger.info("build train dataset")
     # train_dataset
-    train_dataset = TrkDataset(dataset, subset)
+    train_dataset = TrkDataset()
     logger.info("build dataset done")
 
     train_sampler = None
     # if get_world_size() > 1:
     #     train_sampler = DistributedSampler(train_dataset)
-    data_loader = DataLoader(train_dataset,
+    train_loader = DataLoader(train_dataset,
                               batch_size=cfg.TRAIN.BATCH_SIZE,
                               num_workers=cfg.TRAIN.NUM_WORKERS,
                               pin_memory=True,
                               sampler=train_sampler,
                               collate_fn=collate_fn,
                               drop_last=True)
-    return data_loader
-
-
-def check_keys(model, pretrained_state_dict):
-    ckpt_keys = set(pretrained_state_dict.keys())
-    model_keys = set(model.state_dict().keys())
-    used_pretrained_keys = model_keys & ckpt_keys
-    unused_pretrained_keys = ckpt_keys - model_keys
-    missing_keys = model_keys - ckpt_keys
-    # filter 'num_batches_tracked'
-    missing_keys = [x for x in missing_keys
-                    if not x.endswith('num_batches_tracked')]
-    if len(missing_keys) > 0:
-        logger.info('[Warning] missing keys: {}'.format(missing_keys))
-        logger.info('missing keys:{}'.format(len(missing_keys)))
-    if len(unused_pretrained_keys) > 0:
-        logger.info('[Warning] unused_pretrained_keys: {}'.format(
-            unused_pretrained_keys))
-        logger.info('unused checkpoint keys:{}'.format(
-            len(unused_pretrained_keys)))
-    logger.info('used keys:{}'.format(len(used_pretrained_keys)))
-    assert len(used_pretrained_keys) > 0, \
-        'load NONE from pretrained checkpoint'
-    return True
-
-def restore_from(model, optimizer, ckpt_path, apex):
-    ckpt = torch.load(ckpt_path,map_location='cpu')
-    epoch = ckpt['epoch']
-
-    check_keys(model, ckpt['state_dict'])
-    model.load_state_dict(ckpt['state_dict'], strict=False)
-
-    check_keys(optimizer, ckpt['optimizer'])
-    optimizer.load_state_dict(ckpt['optimizer'])
-
-    if apex is not None:
-        model, optimizer = apex.initialize(
-            model, optimizer, opt_level="O1", 
-            keep_batchnorm_fp32=None, loss_scale="dynamic"
-        )
-        if ckpt['amp'] is not None:
-            check_keys(apex, ckpt['amp'])
-            apex.load_state_dict(ckpt['amp'])
-    return model, optimizer, epoch, apex
-
-def load_pretrain(model, pretrained_path):
-    logger.info('load pretrained model from {}'.format(pretrained_path))
-    device = torch.cuda.current_device()
-    pretrained_dict = torch.load(pretrained_path,
-        map_location=lambda storage, loc: storage.cuda(device))
-    if "state_dict" in pretrained_dict.keys():
-        pretrained_dict = pretrained_dict['state_dict']
-
-    try:
-        check_keys(model, pretrained_dict)
-    except:
-        logger.info('[Warning]: using pretrain as features.\
-                Adding "features." as prefix')
-        new_dict = {}
-        for k, v in pretrained_dict.items():
-            k = 'features.' + k
-            new_dict[k] = v
-        pretrained_dict = new_dict
-        check_keys(model, pretrained_dict)
-    model.load_state_dict(pretrained_dict, strict=False)
-    return model
-
+    return train_loader
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
@@ -207,14 +142,13 @@ def main():
                                   weight_decay=cfg.TRAIN.WEIGHT_DECAY)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 40)
 
-    dataset_train = build_data_loader("got10k", "train")
-
+    dataset_train = build_train_loader()
 
     if cfg.TRAIN.RESUME:
         logger.info("resume from {}".format(cfg.TRAIN.RESUME))
         assert os.path.isfile(cfg.TRAIN.RESUME), \
             '{} is not a valid file.'.format(cfg.TRAIN.RESUME)
-        model, optimizer, cfg.TRAIN.START_EPOCH, apex = \
+        model, optimizer, cfg.TRAIN.START_EPOCH, amp = \
             restore_from(model, optimizer, cfg.TRAIN.RESUME, amp)
     
     else:

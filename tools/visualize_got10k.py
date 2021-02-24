@@ -17,7 +17,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 from tr2.core.config import cfg
 from tr2.utils.distributed import get_world_size
-from tr2.datasets.dataset import Got10kVal
+from tr2.datasets import wrapper
 from tr2.utils.log_helper import init_log, add_file_handler
 from tr2.models.tr2 import build_tr2
 from tr2.utils.misc import collate_fn
@@ -174,28 +174,31 @@ def main():
             )
     model.eval()
 
-    validator = Got10kVal()
+    visualizer = wrapper.Got10kVisualize(cfg.DATASET.GOT10K.ROOT)
     
-    folder = "result"
-    for video_idx in tqdm(range(len(validator))):
-        img_paths, anno = validator[video_idx]
+    vis_folder = cfg.DATASET.GOT10K.VIS_PATH
+    if not os.path.exists(vis_folder):
+        os.makedirs(vis_folder)
+
+    for video_idx in tqdm(range(len(visualizer))):
+        img_paths, anno = visualizer[video_idx]
         
-        template, template_norm, _ = validator.transforms(img_paths[0], anno[0, :], is_template=True)
+        template, template_norm, _, _ = visualizer.transforms(img_paths[0], anno[0, :], is_template=True)
         model.init(nested_tensor_from_tensor_list([template_norm.to(device)]))
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID') 
-        video = cv2.VideoWriter(f"{folder}/{validator.dataset.seq_names[video_idx]}.avi", fourcc, 15, template.size)
+        video = cv2.VideoWriter(f"{vis_folder}/{visualizer.dataset.seq_names[video_idx]}.avi", fourcc, 15, template.size)
 
         for idx in tqdm(range(1, len(img_paths))):
-            search, search_norm, target = validator.transforms(img_paths[idx], anno[idx, :])
+            search, search_norm, target, src_box = visualizer.transforms(img_paths[idx], anno[idx, :])
             cls, boxes = model.track(nested_tensor_from_tensor_list([search_norm.to(device)]))
             boxes = box_ops.box_cxcywh_to_xyxy(boxes)
             img_h, img_w = target["orig_size"]
             scale_fct = torch.stack([img_w, img_h, img_w, img_h]).unsqueeze(0)
             boxes = boxes * scale_fct.to(device)
-            x1, y1, x2, y2 = validator.cvt_int(boxes)
             draw = ImageDraw.Draw(search)
-            draw.rectangle((x1, y1, x2, y2), fill=None, outline=(255, 0, 0), width=2)
+            draw.rectangle(wrapper.cvt_int(boxes), fill=None, outline=(255, 0, 0), width=3)
+            draw.rectangle(wrapper.cvt_int(src_box), fill=None, outline=(0, 255, 0), width=3)
             del draw
             search_np = search.copy()
             video.write(cv2.cvtColor(np.array(search_np), cv2.COLOR_RGB2BGR))

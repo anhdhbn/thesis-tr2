@@ -47,14 +47,18 @@ __C.TRAIN.LR = 1e-4
 
 __C.TRAIN.WEIGHT_DECAY = 1e-4
 
-__C.TRAIN.APEX = True
-
 # ------------------------------------------------------------------------ #
 # Dataset options
 # ------------------------------------------------------------------------ #
 
 __C.DATASET = CN(new_allowed=True)
 
+__C.DATASET.NAMES = ('GOT10K', 'LASOT')
+
+__C.DATASET.GOT10K = CN()
+__C.DATASET.GOT10K.ROOT = 'training_dataset/got10k'
+__C.DATASET.GOT10K.FRAMES_PER_VIDEO = 150
+__C.DATASET.GOT10K.VIS_PATH = 'visualization/e0'
 
 # ------------------------------------------------------------------------ #
 # Backbone options
@@ -62,8 +66,6 @@ __C.DATASET = CN(new_allowed=True)
 __C.BACKBONE = CN()
 
 __C.BACKBONE.TYPE = 'resnet50'
-
-__C.BACKBONE.KWARGS = CN(new_allowed=True)
 
 # Train layers
 __C.BACKBONE.TRAIN_LAYERS = ['layer2', 'layer3', 'layer4']

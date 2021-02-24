@@ -13,12 +13,14 @@ from tr2.models.embedding import PositionEmbeddingSine
 from tr2.utils.misc import NestedTensor
 
 class Backbone(nn.Module):
-    def __init__(self, backbone_name:str="resnet50"):
+    def __init__(self, backbone_name:str="resnet50", train_layers=['layer2', 'layer3', 'layer4']):
         super().__init__()
         backbone = getattr(torchvision.models, backbone_name)(pretrained=True)
+        backbone.requires_grad_(False)
         for name, parameter in backbone.named_parameters():
-            if 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
-                parameter.requires_grad_(False)
+            for layer in train_layers:
+                if layer in name:
+                    parameter.requires_grad_(True)
         # return_layers = {"layer1": "layer1", "layer2": "layer2", "layer3": "layer3", "layer4": "layer4"}
         return_layers = {"layer4": "layer4"}
         self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
@@ -56,7 +58,7 @@ class Joiner(nn.Sequential):
 
 def build_backbone(hidden_dims):
     position_embedding = PositionEmbeddingSine(num_pos_feats=hidden_dims//2, normalize=True)
-    backbone = Backbone(cfg.BACKBONE.TYPE)
+    backbone = Backbone(cfg.BACKBONE.TYPE, cfg.BACKBONE.TRAIN_LAYERS)
     model = Joiner(backbone, position_embedding)
     model.num_channels = backbone.num_channels
     return model

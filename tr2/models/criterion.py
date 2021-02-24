@@ -13,8 +13,6 @@ class Tr2Criterion(nn.Module):
         self.cls_weight = cls_weight
         self.giou_weight = giou_weight
 
-        self.tr_cls_loss = nn.BCEWithLogitsLoss()
-
     def forward(self, x: Tuple[Tensor, Tensor], y: Tuple[Tensor, Tensor]) -> Dict[str, Tensor]:
         """
         :param x and y: a tuple containing:
@@ -29,9 +27,7 @@ class Tr2Criterion(nn.Module):
         N, _ = label_loc.shape
 
         # class loss
-        cls_loss = self.tr_cls_loss(cls, label_cls)
-        # if cls_loss > 1:
-        #     print(cls, label_cls)
+        cls_loss = nn.BCEWithLogitsLoss()(cls, label_cls)
 
         # ignore negative labels
         mask = label_cls != torch.tensor([0], dtype=label_cls.dtype, device=label_cls.device)
