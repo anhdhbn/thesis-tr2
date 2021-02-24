@@ -37,7 +37,7 @@ logger = logging.getLogger('global')
 parser = argparse.ArgumentParser(description='tracking transformer')
 parser.add_argument('--cfg', type=str, default='config.yaml',
                     help='configuration of tracking')
-parser.add_argument('--seed', type=int, default=1699,
+parser.add_argument('--seed', type=int, default=1234,
                     help='random seed')
 parser.add_argument('--local_rank', type=int, default=0,
                     help='compulsory for pytorch launcer')

@@ -42,10 +42,6 @@ class Joiner(nn.Sequential):
     def __init__(self, backbone: nn.Module, position_embedding: nn.Module):
         super(Joiner, self).__init__(backbone, position_embedding)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
-        features = self.backbone(x)
-        return features, self.position_embedding(features)
-
     def forward(self, tensor_list: NestedTensor):
         xs = self[0](tensor_list)
         out: List[NestedTensor] = []

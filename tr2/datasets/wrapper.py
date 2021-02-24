@@ -68,7 +68,7 @@ class GOT10kWrapper(Dataset):
         self.start_idx = start_idx
         self.indices = np.random.permutation(len(self.dataset))
         (self.template_transforms, self.search_transforms), self.norm_transform = make_transforms(subset)
-        self.ignore = [1204,4224,4418,7787,7964,9171,9176]
+        self.ignore = sorted([1204,4224,4418,7787,7964,9171,9176]) if subset == "train" else []
 
     def shuffle(self):
         np.random.shuffle(self.indices)
@@ -76,6 +76,10 @@ class GOT10kWrapper(Dataset):
     def __getitem__(self, index):
         index = self.indices[index % len(self.dataset)]
         img_files, anno, meta = self.dataset[index]
+
+        while index in self.ignore:	
+            index = np.random.choice(len(self.dataset))	
+            index = self.indices[index % len(self.dataset)]
 
         # search
         idx = random.randrange(1, len(img_files))
