@@ -3,6 +3,8 @@ APEX: true
 
 BACKBONE: 
   TYPE: 'resnet50'
+  TRAIN_LAYERS: ['layer2', 'layer3', 'layer4']
+  LR: 0.00005
 
 TRAIN:
   EPOCH: 50
@@ -13,10 +15,6 @@ TRAIN:
     loc_weight: 1.2
     giou_weight: 1.2
   RESUME: ''
-
-BACKBONE:
-  TRAIN_LAYERS: ['layer2', 'layer3', 'layer4']
-  LR: 0.00005
 
 TRANSFORMER:
   KWARGS:
