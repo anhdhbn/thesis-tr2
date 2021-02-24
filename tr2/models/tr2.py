@@ -88,10 +88,9 @@ class Tr2(nn.Module):
         
         return outputs_class, outputs_coord
 
-def build_tr2():
-    hidden_dims=cfg.TRANSFORMER.KWARGS['hidden_dims']
+def build_tr2(hidden_dims, transformer_kwargs, loss_weight):
     backbone = build_backbone(hidden_dims)
-    transformer = build_transformer(**cfg.TRANSFORMER.KWARGS)
+    transformer = build_transformer(**transformer_kwargs)
     tr2 = Tr2(
         backbone,
         transformer,
@@ -99,6 +98,6 @@ def build_tr2():
     )
 
     criterion = build_criterion(
-        **cfg.TRAIN.WEIGHT
+        **loss_weight
     )
     return tr2, criterion

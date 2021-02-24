@@ -174,7 +174,7 @@ def main():
             )
     model.eval()
 
-    visualizer = wrapper.Got10kVisualize(cfg.DATASET.GOT10K.ROOT)
+    visualizer = wrapper.VisualizeGot10k(cfg.DATASET.GOT10K.ROOT)
     
     vis_folder = cfg.DATASET.GOT10K.VIS_PATH
     if not os.path.exists(vis_folder):

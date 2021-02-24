@@ -12,6 +12,7 @@ import numpy as np
 import json
 
 import torch
+from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
@@ -24,6 +25,7 @@ from tr2.utils.misc import collate_fn
 from tr2.utils.model_loader import load_pretrain, restore_from
 from typing import Iterable
 import math
+from tqdm import tqdm
 
 try:
     from apex import amp
@@ -50,23 +52,22 @@ def seed_torch(seed=0):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-def build_train_loader():
+def build_data_loader(subset="train"):
     logger.info("build train dataset")
-    # train_dataset
-    train_dataset = TrkDataset()
+    data_dataset = TrkDataset(subset)
     logger.info("build dataset done")
 
-    train_sampler = None
+    data_sampler = None
     # if get_world_size() > 1:
-    #     train_sampler = DistributedSampler(train_dataset)
-    train_loader = DataLoader(train_dataset,
+    #     data_sampler = DistributedSampler(data_dataset)
+    data_loader = DataLoader(data_dataset,
                               batch_size=cfg.TRAIN.BATCH_SIZE,
                               num_workers=cfg.TRAIN.NUM_WORKERS,
                               pin_memory=True,
-                              sampler=train_sampler,
+                              sampler=data_sampler,
                               collate_fn=collate_fn,
                               drop_last=True)
-    return train_loader
+    return data_loader
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
@@ -103,6 +104,36 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                                 val=outputs[k])
                 logger.info(info)
 
+def evaluate(model: nn.Module, criterion: nn.Module, data_loader: Iterable, device: torch.device, epoch: int):
+    model.eval()
+    criterion.eval()
+    all_outputs = {}
+    pbar = tqdm(enumerate(data_loader))
+    for idx, (template, search, label_cls, label_bbox) in pbar:
+        out = model(template.to(device), search.to(device))
+        outputs = criterion(out,(label_cls.to(device), label_bbox.to(device)))
+        if outputs is not None:
+            for k,v in outputs.items():
+                if k not in all_outputs.keys(): all_outputs[k] = outputs[k].cpu().detach()
+                else: all_outputs[k] += outputs[k].cpu().detach()
+            current_loss = ("total loss: {:.6f}, giou: {:.6f}, iou: {:.6f}").format(
+                all_outputs["total_loss"] / (idx + 1), 
+                all_outputs["giou_loss"] / (idx + 1),
+                all_outputs["iou_loss"] / (idx + 1)
+            )
+            pbar.set_description(current_loss)
+    
+    info = f"Val epoch: [{epoch}]\n"
+
+    for cc, (k, v) in enumerate(all_outputs.items()):
+        if cc % 2 == 0:
+            info += ("\t{name}: {val:.6f}\t").format(name=k,
+                    val=all_outputs[k]/len(data_loader))
+        else:
+            info += ("{name}: {val:.6f}\n").format(name=k,
+                    val=all_outputs[k]/len(data_loader))
+    logger.info(info)
+
 def main():
     logger.info("init done")
     cfg.merge_from_file(args.cfg)
@@ -123,7 +154,11 @@ def main():
     # logger.info("Version Information: \n{}\n".format(commit()))
     logger.info("config \n{}".format(json.dumps(cfg, indent=4)))
 
-    model, criterion = build_tr2()
+    model, criterion = build_tr2(
+        hidden_dims=cfg.TRANSFORMER.KWARGS['hidden_dims'],
+        transformer_kwargs=cfg.TRANSFORMER.KWARGS,
+        loss_weight=cfg.TRAIN.WEIGHT
+    )
     criterion.to(device)
     model.to(device)
 
@@ -142,7 +177,8 @@ def main():
                                   weight_decay=cfg.TRAIN.WEIGHT_DECAY)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 40)
 
-    dataset_train = build_train_loader()
+    dataset_train = build_data_loader()
+    dataset_val = build_data_loader("val") if cfg.TRAIN.VAL_LOSS else None
 
     if cfg.TRAIN.RESUME:
         logger.info("resume from {}".format(cfg.TRAIN.RESUME))
@@ -179,6 +215,8 @@ def main():
             },
             cfg.TRAIN.SNAPSHOT_DIR+'/checkpoint_e%d.pth' % (epoch))
         dataset_train.dataset.shuffle()
+        if dataset_val:
+            evaluate(model, criterion, dataset_val, device, epoch)
 
 if __name__ == '__main__':
     seed_torch(args.seed)

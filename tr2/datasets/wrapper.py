@@ -62,6 +62,7 @@ class GOT10kWrapper(Dataset):
         self.name = name
         self.root = os.path.join(cur_path, '../../', root) if not os.path.isabs(root) else root
         assert subset in ['train', 'val'], 'Unknown subset.'
+        self.subset = subset
         self.dataset = GOT10k(self.root , subset=subset, return_meta=True)
         self.length = len(self.dataset) * frame_per_video
         self.start_idx = start_idx
@@ -102,10 +103,10 @@ class GOT10kWrapper(Dataset):
         return self.length
 
     def log(self):
-        logger.info(f"Loading {self.name}, len: {self.length}, start-index: {self.start_idx}")
+        logger.info(f"Loading {self.name}, subset: {self.subset}, len: {self.length}, start-index: {self.start_idx}")
 
 
-class Got10kVisualize:
+class VisualizeGot10k:
     def __init__(self, root, subset="val") -> None:
         assert subset in ['val', "test"], 'Unknown subset.'
         cur_path = os.path.dirname(os.path.realpath(__file__))
