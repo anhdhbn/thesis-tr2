@@ -61,7 +61,7 @@ def build_data_loader(subset="train"):
     # if get_world_size() > 1:
     #     data_sampler = DistributedSampler(data_dataset)
     data_loader = DataLoader(data_dataset,
-                              batch_size=cfg.TRAIN.BATCH_SIZE,
+                              batch_size=cfg.TRAIN.BATCH_SIZE if subset=="train" else cfg.TRAIN.BATCH_SIZE - 1,
                               num_workers=cfg.TRAIN.NUM_WORKERS,
                               pin_memory=True,
                               sampler=data_sampler,
