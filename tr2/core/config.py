@@ -60,6 +60,7 @@ __C.DATASET.NAMES = ('GOT10K', 'LASOT')
 __C.DATASET.GOT10K = CN()
 __C.DATASET.GOT10K.ROOT = 'training_dataset/got10k'
 __C.DATASET.GOT10K.FRAMES_PER_VIDEO = 150
+__C.DATASET.GOT10K.FRAMES_PER_VIDEO_VAL = 150
 __C.DATASET.GOT10K.VIS_PATH = 'visualization/e0'
 
 # ------------------------------------------------------------------------ #
