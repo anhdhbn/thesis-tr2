@@ -2,12 +2,13 @@ import random
 
 import PIL
 import torch
+from torch import Tensor
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
 from tr2.utils.box_ops import box_xyxy_to_cxcywh
 from tr2.utils.misc import interpolate
-
+from tr2.utils import box_ops
 
 def crop(image, target, region):
     cropped_image = F.crop(image, *region)
@@ -163,15 +164,47 @@ class RandomSizeCrop(object):
 
 
 class CenterCrop(object):
-    def __init__(self, size):
-        self.size = size
+    def __init__(self):
+        pass
 
     def __call__(self, img, target):
+        if len(target['boxes']) == 0:
+            return img, target
+
         image_width, image_height = img.size
-        crop_height, crop_width = self.size
-        crop_top = int(round((image_height - crop_height) / 2.))
-        crop_left = int(round((image_width - crop_width) / 2.))
-        return crop(img, target, (crop_top, crop_left, crop_height, crop_width))
+        boxes = box_ops.box_xyxy_to_cxcywh(target["boxes"])
+
+        def get_k(image_size, box_size: Tensor):
+            k = 1.2
+            # if image_size / box_size > 10:
+            #     k = 2.5
+            # elif image_size / box_size > 5:
+            #     k = 1.8
+            # elif image_size / box_size > 3:
+            #     k = 1.35
+            return k
+
+        for box in boxes:
+            cx, cy, w, h = box
+            if int(w) == 0 or int(h) == 0:
+                return img, target 
+            kw = get_k(image_width, w)
+            kh = get_k(image_height, h)
+            
+            minx = cx - w * kw
+            maxx = cx + w * kw
+            miny = cy - h * kh
+            maxy = cy + h * kh
+
+            minx = max(minx, 0)
+            miny = max(miny, 0)
+
+            maxx = min(maxx, image_width)
+            maxy = min(maxy, image_height)
+
+            region = int(miny), int(minx), int(maxy - miny), int(maxx - minx)
+            target["anchor"] = ((region[1], region[0]), (int(w), int(h)), img.size)
+        return crop(img, target, region)
 
 
 class RandomHorizontalFlip(object):

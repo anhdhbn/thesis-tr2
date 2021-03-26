@@ -55,6 +55,8 @@ __C.TRAIN.VAL_LOSS = True
 
 __C.DATASET = CN(new_allowed=True)
 
+__C.DATASET.NEG = 0.2
+
 __C.DATASET.NAMES = ('GOT10K', 'LASOT')
 
 __C.DATASET.GOT10K = CN()

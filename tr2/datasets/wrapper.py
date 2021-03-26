@@ -1,11 +1,16 @@
 import torch
+from torch import Tensor
 from torch.utils.data import Dataset
 import logging, os, random
 import numpy as np
 from got10k.datasets import GOT10k
+import PIL
 from PIL import Image
+from typing import Dict, Tuple
+import pickle
 
 from tr2.datasets import transforms as T
+from tr2.utils import box_ops
 
 logger = logging.getLogger("global")
 
@@ -40,7 +45,8 @@ def train_transforms():
                 T.RandomSizeCrop(384, 600),
                 T.RandomResize(scales, max_size=1333),
             ])
-        )
+        ),
+        T.CenterCrop()
     ])
     return template_transforms, search_transforms
 
@@ -68,27 +74,52 @@ class GOT10kWrapper(Dataset):
         self.start_idx = start_idx
         self.indices = np.random.permutation(len(self.dataset))
         (self.template_transforms, self.search_transforms), self.norm_transform = make_transforms(subset)
+        # with open(os.path.join(self.root , 'got10k_major_class.pickle'), 'rb') as fp:
+        #     self.major_class = pickle.load(fp)
+        #     self.categories = list(self.major_class.keys())
         self.ignore = sorted([1204,4224,4418,7787,7964,9171,9176]) if subset == "train" else []
+        # self.ignore = [8628, 8630, 9058, 9059]
 
     def shuffle(self):
         np.random.shuffle(self.indices)
 
-    def __getitem__(self, index):
+    def _get_negative_pair(self):
+        category = np.random.choice(self.categories)
+        while len(self.major_class[category]) == 1:
+            category = np.random.choice(self.categories)
+        
+        first_idx = np.random.choice()
+
+
+    def get_pair(self, idx, neg):
+        if neg:
+            # return self._get_negative_pair()
+            return self._get_positive_pair(idx)
+        else: 
+            return self._get_positive_pair(idx)
+
+    def _get_positive_pair(self, index):
         index = self.indices[index % len(self.dataset)]
         while index in self.ignore:	
             index = np.random.choice(len(self.dataset))	
             index = self.indices[index % len(self.dataset)]
         img_files, anno, meta = self.dataset[index]
+
         # search
         idx = random.randrange(1, len(img_files))
         search, bbox = Image.open(img_files[idx]), cvt_x0y0wh_xyxy(anno[idx, :])
-        search, target = self.search_transforms(search, {"boxes": bbox})
+        search, target = self.search_transforms(search, {"boxes": bbox, "orig_size": search.size})
         search, target = self.norm_transform(search, target)
-
+        # try:
+        #     search, target = self.norm_transform(search, target)
+        # except:
+        #     print(index, target)
+        #     exit(0)
         # template
+        # get the first image
         src, bbox_src = Image.open(img_files[0]), cvt_x0y0wh_xyxy(anno[0, :])
-        src, target_src = self.template_transforms(src, {"boxes": bbox_src})
-
+        src, target_src = self.template_transforms(src, {"boxes": bbox_src, "orig_size": search.size})
+        # crop object
         template = src.crop(cvt_int(target_src["boxes"]))
         template, _ = self.norm_transform(template, None)
         
@@ -106,7 +137,6 @@ class GOT10kWrapper(Dataset):
 
     def log(self):
         logger.info(f"Loading {self.name}, subset: {self.subset}, len: {self.length}, start-index: {self.start_idx}")
-
 
 class VisualizeGot10k:
     def __init__(self, root, subset="val") -> None:

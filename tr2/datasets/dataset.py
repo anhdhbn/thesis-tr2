@@ -56,7 +56,5 @@ class TrkDataset(Dataset):
 
     def __getitem__(self, index):
         dataset, index = self._find_dataset(index)
-
-        # todos: negative
-        
-        return dataset[index]
+        neg = cfg.DATASET.NEG and cfg.DATASET.NEG > np.random.random()
+        return dataset.get_pair(index, neg)
