@@ -11,6 +11,7 @@ import pickle
 
 from tr2.datasets import transforms as T
 from tr2.utils import box_ops
+from got10k.experiments import ExperimentGOT10k
 
 logger = logging.getLogger("global")
 
@@ -51,10 +52,15 @@ def train_transforms():
     return template_transforms, search_transforms
 
 def val_transforms():
-    val_transforms = T.Compose([
+    template_transforms = T.Compose([
         T.RandomResize([800], max_size=1333)
     ])
-    return val_transforms, val_transforms
+
+    search_transforms = T.Compose([
+        T.RandomResize([800], max_size=1333),
+        T.CenterCrop()
+    ])
+    return template_transforms, search_transforms
 
 def make_transforms(subset):
     assert subset in ['train', 'val', "test"], 'Unknown subset.'
@@ -133,6 +139,33 @@ class GOT10kWrapper(Dataset):
 
     def log(self):
         logger.info(f"Loading {self.name}, subset: {self.subset}, len: {self.length}, start-index: {self.start_idx}")
+
+class EvaluateGot10K:
+    def __init__(self, root, subset) -> None:
+        assert subset in ['val', "test"], 'Unknown subset.'
+        self.experiment = ExperimentGOT10k(
+            root_dir=root,          # GOT-10k's root directory
+            subset=subset,               # 'train' | 'val' | 'test'
+            result_dir='results',       # where to store tracking results
+            report_dir='reports'        # where to store evaluation reports
+        )
+        (self.template_transforms, self.search_transforms), self.transform_norm = make_transforms(subset)
+
+    def transforms(self, image_src, bbox, is_template=False):
+        bbox = cvt_x0y0wh_xyxy(bbox)
+        src_box = bbox.clone()
+        w, h = image_src.size
+        
+        if is_template:
+            image, target = self.template_transforms(image_src, {"boxes": bbox, "orig_size": torch.tensor([h, w], dtype=bbox.dtype)})
+            image = image.crop(cvt_int(target["boxes"]))
+        else:
+            image, target = self.search_transforms(image_src, {"boxes": bbox, "orig_size": torch.tensor([h, w], dtype=bbox.dtype)})
+            image.save("dcm.png")
+        image_norm, target_norm = self.transform_norm(image, target)
+        return image_src, image, image_norm, target_norm, src_box.squeeze(0)
+
+
 
 class VisualizeGot10k:
     def __init__(self, root, subset="val") -> None:

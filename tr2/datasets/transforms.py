@@ -175,13 +175,15 @@ class CenterCrop(object):
         boxes = box_ops.box_xyxy_to_cxcywh(target["boxes"])
 
         def get_k(image_size, box_size: Tensor):
-            k = 1.2
+            k = 1
             # if image_size / box_size > 10:
             #     k = 2.5
             # elif image_size / box_size > 5:
             #     k = 1.8
             # elif image_size / box_size > 3:
             #     k = 1.35
+            if image_size / box_size > 10:
+                k = 1.2
             return k
 
         for box in boxes:
@@ -203,7 +205,11 @@ class CenterCrop(object):
             maxy = min(maxy, image_height)
 
             region = int(miny), int(minx), int(maxy - miny), int(maxx - minx)
-            target["anchor"] = ((region[1], region[0]), (int(w), int(h)), img.size)
+            region_target = torch.tensor([region[1], region[0]], dtype=boxes.dtype)
+            wh_target = torch.tensor([w, h], dtype=boxes.dtype)
+            w_img, h_img = img.size
+            wh_img = torch.tensor([w_img, h_img], dtype=boxes.dtype)
+            target["anchor"] = (region_target, wh_target, wh_img)
         return crop(img, target, region)
 
 
