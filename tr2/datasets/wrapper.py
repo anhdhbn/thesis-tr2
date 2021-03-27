@@ -110,11 +110,7 @@ class GOT10kWrapper(Dataset):
         search, bbox = Image.open(img_files[idx]), cvt_x0y0wh_xyxy(anno[idx, :])
         search, target = self.search_transforms(search, {"boxes": bbox, "orig_size": search.size})
         search, target = self.norm_transform(search, target)
-        # try:
-        #     search, target = self.norm_transform(search, target)
-        # except:
-        #     print(index, target)
-        #     exit(0)
+
         # template
         # get the first image
         src, bbox_src = Image.open(img_files[0]), cvt_x0y0wh_xyxy(anno[0, :])
