@@ -241,6 +241,8 @@ class IdentityTracker(Tracker):
         x, y, w, h = self.center
         x = x - w/2
         y = y - h/2
+        x = max(0, x)
+        y = max(0, y)
         return [y, x, h, w]
 
 if __name__ == '__main__':

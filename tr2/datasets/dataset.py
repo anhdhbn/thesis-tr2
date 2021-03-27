@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 
 from tr2.core.config import cfg
 from tr2.datasets.wrapper import GOT10kWrapper
+import numpy as np
 
 logger = logging.getLogger("global")
 
