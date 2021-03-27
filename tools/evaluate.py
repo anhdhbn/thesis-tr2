@@ -197,6 +197,7 @@ class IdentityTracker(Tracker):
         self.model = model
         self.evaluator = evaluator
         self.device = device
+        self.idx = 1
     
     def init(self, image, box):
         """Initialize your tracking model in the first frame
@@ -211,6 +212,10 @@ class IdentityTracker(Tracker):
         x, y, w, h = box
         self.center = [x + w/2, y + h/2, w, h]
 
+        fourcc = cv2.VideoWriter_fourcc(*'XVID') 
+        self.video = cv2.VideoWriter(f"tmp/{self.idx}.avi", fourcc, 15, template.size)
+        self.idx += 1
+
     def update(self, image):
         """Locate target in an new frame and return the estimated bounding box.
         
@@ -221,10 +226,16 @@ class IdentityTracker(Tracker):
             np.ndarray -- Estimated target bounding box (4x1,
                 [left, top, width, height]) in ``image``.
         """
-        x, y, w, h = self.center
-        box = [x - w/2, y - h/2, w, h]
+        cx, cy, w, h = self.center
+        box = [cx - w/2, cy - h/2, w, h]
         search, search_cvt, search_norm, target, src_box = self.evaluator.transforms(image, box)
+        h_orig, w_orig  = target['orig_size']
+
         cls, boxes = model.track(nested_tensor_from_tensor_list([search_norm.to(device)]))
+        if 'anchor' not in target.keys():
+            self.center = [w_orig/2, h_orig/2, w_orig, h_orig]
+            return [0, 0, h_orig, w_orig]
+        # print(cls.sigmoid(), self.center, box, target['anchor'])
         (edgex, edgey), _, (w_img, h_img) = target['anchor']
         w_img_cvt, h_img_cvt = search_cvt.size
         w_img_cvt = torch.tensor(w_img_cvt, dtype=boxes.dtype)
@@ -234,16 +245,22 @@ class IdentityTracker(Tracker):
         boxesxyxy = boxesxyxy * torch.stack([w_img_cvt, h_img_cvt, w_img_cvt, h_img_cvt]).unsqueeze(0).to(device)
         boxesxyxy = boxesxyxy + torch.stack([edgex, edgey, edgex, edgey]).unsqueeze(0).to(device)
         boxesxyxy = boxesxyxy / torch.stack([w_img, h_img, w_img, h_img]).unsqueeze(0).to(device)
-        h_orig, w_orig  = target['orig_size']
         boxesxyxy = boxesxyxy * torch.stack([w_orig, h_orig, w_orig, h_orig]).unsqueeze(0).to(device)
 
-        self.center = wrapper.cvt_int(box_ops.box_xyxy_to_cxcywh(boxesxyxy))
-        x, y, w, h = self.center
-        x = x - w/2
-        y = y - h/2
+        cx_new, cy_new, w_new, h_new = wrapper.cvt_int(box_ops.box_xyxy_to_cxcywh(boxesxyxy))
+        cx_new = max(0, cx_new)
+        cy_new = max(0, cy_new)
+        self.center = [cx_new, cy_new, w_new, h_new]
+        
+        # Dasiam
+        if cx_new / w_orig > 0.85 or cy_new / w_orig > 0.85:
+            self.center = [cx_new, cy_new, w_new * 2, h_new * 2]
+
+        x = cx_new - w_new/2
+        y = cy_new - h_new/2
         x = max(0, x)
         y = max(0, y)
-        return [y, x, h, w]
+        return [y, x, h_new, w_new]
 
 if __name__ == '__main__':
     seed_torch(args.seed)
