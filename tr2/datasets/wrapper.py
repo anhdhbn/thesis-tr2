@@ -143,6 +143,8 @@ class GOT10kWrapper(Dataset):
 class EvaluateGot10K:
     def __init__(self, root, subset) -> None:
         assert subset in ['val', "test"], 'Unknown subset.'
+        cur_path = os.path.dirname(os.path.realpath(__file__))
+        root = os.path.join(cur_path, '../../', root) if not os.path.isabs(root) else root
         self.experiment = ExperimentGOT10k(
             root_dir=root,          # GOT-10k's root directory
             subset=subset,               # 'train' | 'val' | 'test'
@@ -161,7 +163,6 @@ class EvaluateGot10K:
             image = image.crop(cvt_int(target["boxes"]))
         else:
             image, target = self.search_transforms(image_src, {"boxes": bbox, "orig_size": torch.tensor([h, w], dtype=bbox.dtype)})
-            image.save("dcm.png")
         image_norm, target_norm = self.transform_norm(image, target)
         return image_src, image, image_norm, target_norm, src_box.squeeze(0)
 

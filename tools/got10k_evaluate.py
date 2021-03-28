@@ -43,6 +43,7 @@ parser.add_argument('--seed', type=int, default=1234,
                     help='random seed')
 parser.add_argument('--local_rank', type=int, default=0,
                     help='compulsory for pytorch launcer')
+parser.add_argument('--subset', type=str, default="val")
 args = parser.parse_args()
 
 def seed_torch(seed=0):
@@ -207,6 +208,9 @@ class IdentityTracker(Tracker):
             box {np.ndarray} -- Target bounding box (4x1,
                 [left, top, width, height]) in the first frame.
         """
+        if hasattr(self, "video"):
+            self.video.release()
+            del self.video
         template, template_cvt, template_norm, _, _ = self.evaluator.transforms(image, box, True)
         self.model.init(nested_tensor_from_tensor_list([template_norm.to(device)]))
         x, y, w, h = box
@@ -253,19 +257,28 @@ class IdentityTracker(Tracker):
         self.center = [cx_new, cy_new, w_new, h_new]
         
         # Dasiam
-        if cx_new / w_orig > 0.85 or cy_new / w_orig > 0.85:
-            self.center = [cx_new, cy_new, w_new * 2, h_new * 2]
+        if cx_new / w_orig > 0.85 or cy_new / h_orig > 0.85:
+            self.center = [cx_new, cy_new, w_orig / 2, h_orig / 2]
+        if w_new / h_new > 7.5 or w_new / h_new < 1 / 7.5:
+            self.center = [cx_new, cy_new, w_orig / 2, h_orig / 2]
+        
 
         x = cx_new - w_new/2
         y = cy_new - h_new/2
         x = max(0, x)
         y = max(0, y)
+
+        draw = ImageDraw.Draw(search)
+        draw.rectangle(wrapper.cvt_int(boxesxyxy), fill=None, outline=(255, 0, 0), width=5)
+        del draw
+        search_np = search.copy()
+        self.video.write(cv2.cvtColor(np.array(search_np), cv2.COLOR_RGB2BGR))
         return [y, x, h_new, w_new]
 
 if __name__ == '__main__':
     seed_torch(args.seed)
     model, device = load_model()
-    evaluator = wrapper.EvaluateGot10K("../../training_dataset/got10k", "val")
+    evaluator = wrapper.EvaluateGot10K(cfg.DATASET.GOT10K.ROOT, args.subset)
     tracker = IdentityTracker(model, evaluator, device)
 
     evaluator.experiment.run(tracker, visualize=False)

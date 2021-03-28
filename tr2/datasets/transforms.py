@@ -189,7 +189,7 @@ class CenterCrop(object):
         for box in boxes:
             cx, cy, w, h = box
             if int(w) == 0 or int(h) == 0:
-                print("return")
+                print("CenterCrop return")
                 return img, target 
             kw = get_k(image_width, w)
             kh = get_k(image_height, h)
