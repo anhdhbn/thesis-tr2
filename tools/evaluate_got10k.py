@@ -27,6 +27,7 @@ import math
 from PIL import Image, ImageDraw
 import cv2
 from tqdm import tqdm
+from glob import glob
 from tr2.utils.misc import nested_tensor_from_tensor_list
 
 try:
@@ -198,7 +199,11 @@ class IdentityTracker(Tracker):
         self.model = model
         self.evaluator = evaluator
         self.device = device
-        self.idx = 1
+        self.tmp_dir = "tmp"
+        if not os.path.exists(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+        self.idx = len(glob(f"{self.tmp_dir}/{self.evaluator.subset}_*.avi")) + 1
+        print(self.idx)
     
     def init(self, image, box):
         """Initialize your tracking model in the first frame
@@ -217,7 +222,7 @@ class IdentityTracker(Tracker):
         self.center = [x + w/2, y + h/2, w, h]
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID') 
-        self.video = cv2.VideoWriter(f"tmp/{self.idx}.avi", fourcc, 15, template.size)
+        self.video = cv2.VideoWriter(f"{self.tmp_dir}/{self.evaluator.subset}_{self.idx}.avi", fourcc, 15, template.size)
         self.idx += 1
 
     def update(self, image):

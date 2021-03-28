@@ -145,6 +145,7 @@ class EvaluateGot10K:
         assert subset in ['val', "test"], 'Unknown subset.'
         cur_path = os.path.dirname(os.path.realpath(__file__))
         root = os.path.join(cur_path, '../../', root) if not os.path.isabs(root) else root
+        self.subset = subset
         self.experiment = ExperimentGOT10k(
             root_dir=root,          # GOT-10k's root directory
             subset=subset,               # 'train' | 'val' | 'test'
