@@ -202,8 +202,6 @@ class IdentityTracker(Tracker):
         self.tmp_dir = "tmp"
         if not os.path.exists(self.tmp_dir):
             os.makedirs(self.tmp_dir)
-        self.idx = len(glob(f"{self.tmp_dir}/{self.evaluator.subset}_*.avi")) + 1
-        print(self.idx)
     
     def init(self, image, box):
         """Initialize your tracking model in the first frame
@@ -213,17 +211,10 @@ class IdentityTracker(Tracker):
             box {np.ndarray} -- Target bounding box (4x1,
                 [left, top, width, height]) in the first frame.
         """
-        if hasattr(self, "video"):
-            self.video.release()
-            del self.video
         template, template_cvt, template_norm, _, _ = self.evaluator.transforms(image, box, True)
         self.model.init(nested_tensor_from_tensor_list([template_norm.to(device)]))
         x, y, w, h = box
         self.center = [x + w/2, y + h/2, w, h]
-
-        fourcc = cv2.VideoWriter_fourcc(*'XVID') 
-        self.video = cv2.VideoWriter(f"{self.tmp_dir}/{self.evaluator.subset}_{self.idx}.avi", fourcc, 15, template.size)
-        self.idx += 1
 
     def update(self, image):
         """Locate target in an new frame and return the estimated bounding box.
@@ -273,11 +264,6 @@ class IdentityTracker(Tracker):
         x = max(0, x)
         y = max(0, y)
 
-        draw = ImageDraw.Draw(search)
-        draw.rectangle(wrapper.cvt_int(boxesxyxy), fill=None, outline=(255, 0, 0), width=5)
-        del draw
-        search_np = search.copy()
-        self.video.write(cv2.cvtColor(np.array(search_np), cv2.COLOR_RGB2BGR))
         return [y, x, h_new, w_new]
 
 if __name__ == '__main__':
@@ -288,3 +274,4 @@ if __name__ == '__main__':
 
     evaluator.experiment.run(tracker, visualize=False)
     evaluator.experiment.report([tracker.name])
+    evaluator.experiment.show([tracker.name])
